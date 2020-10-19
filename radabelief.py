@@ -1,5 +1,3 @@
-# all credit goes to authors of Recrtified Adam and Adabelief
-
 import tensorflow as tf
 from tensorflow_addons.utils.types import FloatTensorLike
 
@@ -23,7 +21,7 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
         total_steps: int = 0,
         warmup_proportion: FloatTensorLike = 0.1,
         min_lr: FloatTensorLike = 0.0,
-        name: str = "RadaBelief",
+        name: str = "RectifiedAdam",
         **kwargs
     ):
         super().__init__(name, **kwargs)
@@ -104,7 +102,8 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
         m_corr_t = m_t / (1.0 - beta_1_power)
 
         v_t = v.assign(
-            beta_2_t * v + (1.0 - beta_2_t) * tf.square(grad),
+            beta_2_t * v + (1.0 - beta_2_t) * tf.square(grad - m_t),  # with adabelief
+            # beta_2_t * v + (1.0 - beta_2_t) * tf.square(grad),  # without adabelief
             use_locking=self._use_locking,
         )
         if self.amsgrad:
@@ -173,8 +172,8 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
         m_corr_t = m_t / (1.0 - beta_1_power)
 
         v = self.get_slot(var, "v")
-        # v_scaled_g_values = (grad * grad) * (1 - beta_2_t)  # without Adabelief
-        v_scaled_g_values = (grad - m_t) * (grad - m_t) * (1 - beta_2_t)  # with Adabelief
+        # v_scaled_g_values = (grad * grad) * (1 - beta_2_t)
+        v_scaled_g_values = (grad - m_t) * (grad - m_t) * (1 - beta_2_t)
         v_t = v.assign(v * beta_2_t, use_locking=self._use_locking)
         with tf.control_dependencies([v_t]):
             v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
