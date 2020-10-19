@@ -23,7 +23,7 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
         total_steps: int = 0,
         warmup_proportion: FloatTensorLike = 0.1,
         min_lr: FloatTensorLike = 0.0,
-        name: str = "RectifiedAdam",
+        name: str = "RadaBelief",
         **kwargs
     ):
         super().__init__(name, **kwargs)
@@ -173,8 +173,8 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
         m_corr_t = m_t / (1.0 - beta_1_power)
 
         v = self.get_slot(var, "v")
-        # v_scaled_g_values = (grad * grad) * (1 - beta_2_t)
-        v_scaled_g_values = (grad - m_t) * (grad - m_t) * (1 - beta_2_t)
+        # v_scaled_g_values = (grad * grad) * (1 - beta_2_t)  # without Adabelief
+        v_scaled_g_values = (grad - m_t) * (grad - m_t) * (1 - beta_2_t)  # with Adabelief
         v_t = v.assign(v * beta_2_t, use_locking=self._use_locking)
         with tf.control_dependencies([v_t]):
             v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
