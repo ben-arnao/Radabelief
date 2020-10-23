@@ -64,12 +64,7 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
         # current step of optimizer
         local_step = tf.cast(self.iterations + 1, var_dtype)
 
-        # precalculate betas to power of iters
-        beta_1_power = tf.pow(beta_1, local_step)
-        beta_2_power = tf.pow(beta_2, local_step)
-
-        # use linearly scaled lr from 0 to initial LR while steps under warmup_steps
-        # when out of warmup, use regular LR
+        # use linearly scaled lr from 0 to initial LR while steps under 'warmup_steps'
         lr = tf.where(
             local_step <= warmup_steps,
             (local_step / warmup_steps) * lr_0,
@@ -89,10 +84,9 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
             use_locking=self._use_locking,
         )
 
-        # correct bias (mostly affects initial steps in which gradient will tend to be closer to beta (~1),
-        # as opposed to 0 (neutral)
-        m_corr_t = m_t / (1.0 - beta_1_power)
-        v_corr_t = v_t / (1.0 - beta_2_power)
+        # correct bias (mostly affects initial steps)
+        m_corr_t = m_t / (1.0 - tf.pow(beta_1, local_step))
+        v_corr_t = v_t / (1.0 - tf.pow(beta_2, local_step))
 
         # calculate step
         var_t = m_corr_t / (tf.sqrt(v_corr_t) + epsilon_t)
