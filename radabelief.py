@@ -89,7 +89,7 @@ class RadaBelief(tf.keras.optimizers.Optimizer):
             use_locking=self._use_locking,
         )
 
-        # correct bias (mostly affects initial steps in which gradient will tend to be closer to beta,
+        # correct bias (mostly affects initial steps in which gradient will tend to be closer to beta (~1),
         # as opposed to 0 (neutral)
         m_corr_t = m_t / (1.0 - beta_1_power)
         v_corr_t = v_t / (1.0 - beta_2_power)
@@ -125,7 +125,6 @@ class ReduceLROnPlateau(tf.keras.callbacks.Callback):
                  patience=10,
                  verbose=0,
                  min_delta=1e-4,
-                 cooldown=0,
                  min_lr=0):
         super(ReduceLROnPlateau, self).__init__()
 
@@ -135,21 +134,15 @@ class ReduceLROnPlateau(tf.keras.callbacks.Callback):
         self.min_delta = min_delta
         self.patience = patience
         self.verbose = verbose
-        self.cooldown = cooldown
-        self.cooldown_counter = 0  # Cooldown counter.
         self.wait = 0
         self.best = 0
         self.monitor_op = None
         self._reset()
 
-    def _reset(self):
+    def on_train_begin(self, logs=None):
         self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
         self.best = np.Inf
-        self.cooldown_counter = 0
         self.wait = 0
-
-    def on_train_begin(self, logs=None):
-        self._reset()
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
@@ -163,7 +156,7 @@ class ReduceLROnPlateau(tf.keras.callbacks.Callback):
         if self.monitor_op(current, self.best):
             self.best = current
             self.wait = 0
-        elif not self.in_cooldown():
+        else:
             self.wait += 1
             if self.wait >= self.patience:
                 old_lr = self.model.optimizer.lr
@@ -174,8 +167,4 @@ class ReduceLROnPlateau(tf.keras.callbacks.Callback):
                     if self.verbose > 0:
                         print('\nEpoch %05d: ReduceLROnPlateau reducing learning '
                               'rate to %s.' % (epoch + 1, new_lr.numpy()))
-                    self.cooldown_counter = self.cooldown
-                    self.wait = 0
-
-    def in_cooldown(self):
-        return self.cooldown_counter > 0
+                        self.wait = 0
